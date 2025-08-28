@@ -990,6 +990,22 @@ const handleRemoveEmployee = useCallback(async (index) => {
   }
 }, [selectedEmployees, selectedCampaign]);
 
+// Remove by employee id (used when rendering filtered views)
+const handleRemoveEmployeeById = useCallback(async (employeeId) => {
+  if (!employeeId) return;
+  if (!selectedCampaign) {
+    alert("Please select a campaign first.");
+    return;
+  }
+  try {
+    await EmployeeAPI.removeFromCampaign(selectedCampaign, [employeeId]);
+    setSelectedEmployees((prev) => prev.filter((e) => e.id !== employeeId));
+  } catch (err) {
+    console.error(err);
+    alert(`Failed to remove employee: ${err.message}`);
+  }
+}, [selectedCampaign]);
+
 // Remove single evaluator row (trash icon)
 const handleRemoveEvaluator = useCallback(async (index) => {
   const ev = selectedEvaluators[index];
