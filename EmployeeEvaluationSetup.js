@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Users, 
   Target, 
@@ -782,6 +782,10 @@ const [showManualEvaluatorModal, setShowManualEvaluatorModal] = useState(false);
 const [selectedEmployeeRows, setSelectedEmployeeRows] = useState([]);
 const [selectedEvaluatorRows, setSelectedEvaluatorRows] = useState([]);
 
+  // Employee Group Dropdown state (Officer/Staff)
+  // Values kept lowercase to align with requirement and potential backend expectations
+  const [employeeCategory, setEmployeeCategory] = useState("officer");
+
 // Loading & error (basic)
 const [loading, setLoading] = useState({ campaigns: false, employees: false, evaluators: false });
 const [loadError, setLoadError] = useState(null);
@@ -854,6 +858,24 @@ useEffect(() => {
   }
 }, [selectedCampaign, selectedEmployees, selectedEvaluators, factorSelections]);
 
+
+  // Filter employees by selected employeeCategory across UI
+  // TODO: If the actual backend field is not `employee.category`, adjust normalization here
+  const normalizedCategory = (value) => String(value ?? '').trim().toLowerCase();
+  const matchesCategory = useCallback(
+    (emp) => normalizedCategory(emp.category) === normalizedCategory(employeeCategory),
+    [employeeCategory]
+  );
+
+  const filteredEmployeesMaster = useMemo(
+    () => employees.filter(matchesCategory),
+    [employees, matchesCategory]
+  );
+
+  const filteredSelectedEmployees = useMemo(
+    () => selectedEmployees.filter(matchesCategory),
+    [selectedEmployees, matchesCategory]
+  );
 
   // Get current factors based on selected type
   const getCurrentFactors = useCallback(() => {
@@ -1089,7 +1111,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
             <CheckCircle className="w-5 h-5 text-blue-600 mr-2" />
             Campaign Selection
           </h2>
-          <div className="max-w-md">
+          <div className="max-w-md space-y-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Select Campaign
             </label>
@@ -1112,6 +1134,20 @@ const handleRemoveEvaluator = useCallback(async (index) => {
                 </p>
               </div>
             )}
+            {/* Employee Group Dropdown */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Employee Group
+              </label>
+              <select
+                value={employeeCategory}
+                onChange={(e) => setEmployeeCategory(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="officer">Officer</option>
+                <option value="staff">Staff</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -1124,7 +1160,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
               <Users className="w-6 h-6 text-blue-600" />
               <h2 className="text-xl font-semibold text-gray-900">Employees</h2>
               <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                {selectedEmployees.length} selected
+                {filteredSelectedEmployees.length} selected
               </span>
             </div>
             <button
@@ -1139,8 +1175,14 @@ const handleRemoveEvaluator = useCallback(async (index) => {
           
           <Table
             columns={employeeColumns}
-            data={selectedEmployees}
-            onRemove={handleRemoveEmployee}
+            data={filteredSelectedEmployees}
+            onRemove={(idx) => {
+              const row = filteredSelectedEmployees[idx];
+              if (row) {
+                // Remove by id to avoid index mismatch due to filtering
+                handleRemoveEmployeeById(row.id);
+              }
+            }}
             emptyMessage="No employees selected. Click 'Add Employees' to get started."
           />
         </div>
@@ -1330,7 +1372,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center space-x-3 mb-6">
             <Info className="w-6 h-6 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Campaign Summary</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Review & Confirm</h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -1369,8 +1411,15 @@ const handleRemoveEvaluator = useCallback(async (index) => {
               )}
             </div>
           </div>
-          
-          
+          <div className="mt-6">
+            <button
+              onClick={handleSaveAll}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            >
+              Save Campaign
+            </button>
+          </div>
+
         </div>
       </main>
 
@@ -1378,7 +1427,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
      <EmployeeModal
   isOpen={showEmployeeModal}
   onClose={() => setShowEmployeeModal(false)}
-  data={employees}                 // <— was EMPLOYEES
+  data={filteredEmployeesMaster}                 // Filtered by selected Employee Group
   selectedItems={[]}               // fresh open (we’ll do full reset logic in Task 3)
   onConfirm={handleEmployeeConfirm}
 />
