@@ -34,7 +34,7 @@ export default function EvaluationFactor() {
   // search and filter state
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
-  const [groupFilter, setGroupFilter] = useState("");
+  const [groupFilter, setGroupFilter] = useState("All"); // NEW: default to "All" to match UI and treat as no filter
 
   // create form state
   const [newFactor, setNewFactor] = useState("");
@@ -96,25 +96,26 @@ export default function EvaluationFactor() {
   }, []);
 
   // helper to normalize group coming from backend
+  // Added 'All' support so backend values like "all" are preserved correctly
   function normalizeGroup(g) {
     if (!g) return "Officer";
     const v = String(g).toLowerCase();
     if (v === "officer") return "Officer";
     if (v === "staff") return "Staff";
+    if (v === "all") return "All"; // NEW: correctly handle "All"
     return "Officer";
   }
 
   // filtered list for table
+  // Updated logic: "All" filter shows every group, and when filtering by a
+  // specific group (Officer/Staff) we also include factors tagged with "All".
   const filtered = useMemo(() => {
   const s = search.trim().toLowerCase();
   return factors
     .filter((f) => (typeFilter ? f.factorType === typeFilter : true))
     .filter((f) => {
-      if (!groupFilter) return true;
-      if (groupFilter === "All") {
-        return f.evaluationGroup === "Officer" || f.evaluationGroup === "Staff";
-      }
-      return f.evaluationGroup === groupFilter;
+      if (!groupFilter || groupFilter === "All") return true; // NEW: treat "All" as no filter
+      return f.evaluationGroup === groupFilter || f.evaluationGroup === "All"; // NEW: include universal factors
     })
     .filter((f) =>
       s
@@ -185,7 +186,7 @@ export default function EvaluationFactor() {
     // dynamic payload
     const payload = {
       factorType,
-      evaluationGroup: evaluationFor,
+      evaluationGroup: evaluationFor, // NEW: allow "All" to be sent to backend
       name: newFactor.trim(),
       description: description.trim(),
       ...(factorType === "Qualitative"
@@ -283,7 +284,7 @@ export default function EvaluationFactor() {
     const payload = {
       id: selectedFactor.id,
       factorType: editType,
-      evaluationGroup: editGroup,
+      evaluationGroup: editGroup, // NEW: allow "All" to be updated to backend
       name: editName.trim(),
       description: editDescription.trim(),
       status: selectedFactor.status ?? true,
@@ -448,10 +449,11 @@ export default function EvaluationFactor() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Employee Group <span className="text-red-500">*</span>
               </label>
+              {/* NEW: style polish and include 'All' as a valid selection */}
               <select
   value={evaluationFor}
   onChange={(e) => setEvaluationFor(e.target.value)}
-  className="px-3 py-2 border rounded-lg"
+  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
 >
   <option value="Officer">Officer</option>
   <option value="Staff">Staff</option>
@@ -570,6 +572,7 @@ export default function EvaluationFactor() {
         </div>
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-gray-500" />
+          {/* NEW: improved styling and reset page when group filter changes */}
           <select
             value={typeFilter}
             onChange={(e) => {
@@ -586,8 +589,11 @@ export default function EvaluationFactor() {
 
       <select
   value={groupFilter}
-  onChange={(e) => setGroupFilter(e.target.value)}
-  className="px-3 py-2 border rounded-lg"
+  onChange={(e) => {
+    setGroupFilter(e.target.value);
+    setCurrentPage(1); // NEW: keep pagination consistent when filter changes
+  }}
+  className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-gray-300"
 >
   <option value="All">All</option>
   <option value="Officer">Officer</option>
@@ -598,11 +604,11 @@ export default function EvaluationFactor() {
 
 
 
-          {(typeFilter || groupFilter) && (
+          {(typeFilter || (groupFilter && groupFilter !== "All")) && (
             <button
               onClick={() => {
                 setTypeFilter("");
-                setGroupFilter("");
+                setGroupFilter("All"); // NEW: clear group filter back to 'All' to match default
                 setCurrentPage(1);
               }}
               className="inline-flex items-center gap-1 px-3 py-2 border rounded-lg hover:bg-gray-50"
@@ -688,11 +694,14 @@ export default function EvaluationFactor() {
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {/* NEW: Add distinct badge styling for 'All' universal group */}
                         <span
                           className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                             factor.evaluationGroup === "Officer"
                               ? "bg-indigo-100 text-indigo-800"
-                              : "bg-orange-100 text-orange-800"
+                              : factor.evaluationGroup === "Staff"
+                              ? "bg-orange-100 text-orange-800"
+                              : "bg-gray-200 text-gray-800"
                           }`}
                         >
                           {factor.evaluationGroup}
