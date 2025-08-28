@@ -1501,15 +1501,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
 
             {activeStep === 1 && (
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Employees</h3>
-                  <button
-                    onClick={() => setShowEmployeeModal(true)}
-                    className="inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white focus:ring-2 focus:ring-blue-500 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" /> Add Employees
-                  </button>
-                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Employees</h3>
                 <Table
                   columns={employeeColumns}
                   data={filteredSelectedEmployees}
@@ -1519,35 +1511,19 @@ const handleRemoveEvaluator = useCallback(async (index) => {
                       handleRemoveEmployeeById(row.id);
                     }
                   }}
-                  emptyMessage="No employees selected. Click 'Add Employees' to get started."
+                  emptyMessage="No employees selected. Use the Employees section above to add."
                 />
               </div>
             )}
 
             {activeStep === 2 && (
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Evaluators</h3>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setShowEvaluatorModal(true)}
-                      className="inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white focus:ring-2 focus:ring-purple-500 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" /> Add Evaluators
-                    </button>
-                    <button
-                      onClick={() => setShowManualEvaluatorModal(true)}
-                      className="inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white focus:ring-2 focus:ring-green-500"
-                    >
-                      <Plus className="w-4 h-4" /> Add Evaluators Externally
-                    </button>
-                  </div>
-                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Evaluators</h3>
                 <Table
                   columns={evaluatorColumns}
                   data={selectedEvaluators}
                   onRemove={handleRemoveEvaluator}
-                  emptyMessage="No evaluators selected. Click 'Add Evaluators' to get started."
+                  emptyMessage="No evaluators selected. Use the Evaluators section above to add."
                 />
               </div>
             )}
