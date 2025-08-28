@@ -11,7 +11,8 @@ import {
   Trash2,
   Search,
   X,
-  Filter
+  Filter,
+  Pencil
 } from 'lucide-react';
 
 
@@ -1530,32 +1531,60 @@ const handleRemoveEvaluator = useCallback(async (index) => {
 
             {activeStep === 3 && (
               <div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Factor Type</label>
-                  <div className="max-w-md">
-                    <select
-                      value={selectedFactorType}
-                      onChange={(e) => setSelectedFactorType(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    >
-                      <option value="">Select factor type...</option>
-                      {FACTOR_TYPES.map(type => (
-                        <option key={type.id} value={type.id}>
-                          {type.name} - {type.description}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                {selectedFactorType ? (
-                  <Table
-                    columns={factorColumns}
-                    data={getCurrentFactors()}
-                    emptyMessage="No factors available for the selected type."
-                  />
-                ) : (
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Factors</h3>
+                {/* Show selected factors grouped by type */}
+                {FACTOR_TYPES.map((type) => {
+                  const list = factorSelections[type.id] || [];
+                  if (list.length === 0) return null;
+                  return (
+                    <div key={type.id} className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-medium text-gray-700">{type.name}</div>
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{list.length}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {list.map((f) => (
+                          <div key={f.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{f.name}</div>
+                              {f.description && (
+                                <div className="text-xs text-gray-600">{f.description}</div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                className="p-2 rounded hover:bg-gray-100 text-gray-700"
+                                title="Edit factor"
+                                onClick={() => {
+                                  // TODO: wire up factor edit modal/logic for this factor
+                                  alert('TODO: Open factor edit for ' + f.name);
+                                }}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                className="p-2 rounded hover:bg-red-50 text-red-600"
+                                title="Remove factor"
+                                onClick={() => {
+                                  setFactorSelections((prev) => {
+                                    const current = prev[type.id] || [];
+                                    return { ...prev, [type.id]: current.filter((x) => x.id !== f.id) };
+                                  });
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* If nothing selected at all */}
+                {Object.values(factorSelections).reduce((n, arr) => n + (arr?.length || 0), 0) === 0 && (
                   <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                    Select a factor type to continue.
+                    No factors selected yet. Use the Factors section above to add.
                   </div>
                 )}
               </div>
