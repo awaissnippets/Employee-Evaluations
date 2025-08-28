@@ -824,6 +824,8 @@ useEffect(() => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState(null);
   const [saveError, setSaveError] = useState(null);
+  // Stepper state
+  const [activeStep, setActiveStep] = useState(0);
 
   const handleSaveAll = useCallback(async () => {
   try {
@@ -1094,7 +1096,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div>
@@ -1437,6 +1439,206 @@ const handleRemoveEvaluator = useCallback(async (index) => {
           </div>
 
         </div>
+
+        {/* Stepper Wizard */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8">
+          {/* Stepper header */}
+          <div className="flex items-center justify-between mb-6">
+            {[
+              { id: 0, label: 'Campaign Info' },
+              { id: 1, label: 'Employees' },
+              { id: 2, label: 'Evaluators' },
+              { id: 3, label: 'Factors' },
+              { id: 4, label: 'Review & Confirm' },
+            ].map((step, idx) => (
+              <div key={step.id} className="flex-1 flex items-center">
+                <button
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    activeStep === idx
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                      : 'text-gray-700 hover:bg-gray-50 border border-transparent'
+                  }`}
+                  onClick={() => setActiveStep(idx)}
+                >
+                  {idx === 0 && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                  {idx === 1 && <Users className="w-4 h-4 text-blue-600" />}
+                  {idx === 2 && <UserCheck className="w-4 h-4 text-purple-600" />}
+                  {idx === 3 && <Target className="w-4 h-4 text-green-600" />}
+                  {idx === 4 && <Info className="w-4 h-4 text-gray-700" />}
+                  {step.label}
+                </button>
+                {idx < 4 && (
+                  <div className="flex-1 h-px mx-2 bg-gray-200" />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Step content */}
+          <div className="space-y-4">
+            {activeStep === 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Campaign Info</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
+                    <div className="text-sm text-gray-600">Selected Campaign</div>
+                    <div className="text-base font-semibold text-gray-900 mt-1">
+                      {campaigns.find((c) => String(c.id) === String(selectedCampaign))?.name || '—'}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {campaigns.find((c) => String(c.id) === String(selectedCampaign))?.description || ''}
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
+                    <div className="text-sm text-gray-600">Employee Group</div>
+                    <div className="text-base font-semibold text-gray-900 mt-1">
+                      {employeeCategory === 'officer' ? 'Officer' : 'Staff'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeStep === 1 && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Employees</h3>
+                  <button
+                    onClick={() => setShowEmployeeModal(true)}
+                    className="inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white focus:ring-2 focus:ring-blue-500 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" /> Add Employees
+                  </button>
+                </div>
+                <Table
+                  columns={employeeColumns}
+                  data={filteredSelectedEmployees}
+                  onRemove={(idx) => {
+                    const row = filteredSelectedEmployees[idx];
+                    if (row) {
+                      handleRemoveEmployeeById(row.id);
+                    }
+                  }}
+                  emptyMessage="No employees selected. Click 'Add Employees' to get started."
+                />
+              </div>
+            )}
+
+            {activeStep === 2 && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Evaluators</h3>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowEvaluatorModal(true)}
+                      className="inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white focus:ring-2 focus:ring-purple-500 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" /> Add Evaluators
+                    </button>
+                    <button
+                      onClick={() => setShowManualEvaluatorModal(true)}
+                      className="inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white focus:ring-2 focus:ring-green-500"
+                    >
+                      <Plus className="w-4 h-4" /> Add Evaluators Externally
+                    </button>
+                  </div>
+                </div>
+                <Table
+                  columns={evaluatorColumns}
+                  data={selectedEvaluators}
+                  onRemove={handleRemoveEvaluator}
+                  emptyMessage="No evaluators selected. Click 'Add Evaluators' to get started."
+                />
+              </div>
+            )}
+
+            {activeStep === 3 && (
+              <div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Factor Type</label>
+                  <div className="max-w-md">
+                    <select
+                      value={selectedFactorType}
+                      onChange={(e) => setSelectedFactorType(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    >
+                      <option value="">Select factor type...</option>
+                      {FACTOR_TYPES.map(type => (
+                        <option key={type.id} value={type.id}>
+                          {type.name} - {type.description}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {selectedFactorType ? (
+                  <Table
+                    columns={factorColumns}
+                    data={getCurrentFactors()}
+                    emptyMessage="No factors available for the selected type."
+                  />
+                ) : (
+                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+                    Select a factor type to continue.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeStep === 4 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Review & Confirm</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
+                    <div className="text-2xl font-bold text-blue-600 mb-1">{filteredSelectedEmployees.length}</div>
+                    <div className="text-sm font-medium text-blue-800">Employees</div>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg border border-green-100">
+                    <div className="text-2xl font-bold text-green-600 mb-1">{getTotalSelectedFactors()}</div>
+                    <div className="text-sm font-medium text-green-800">Factors</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-100">
+                    <div className="text-2xl font-bold text-purple-600 mb-1">{selectedEvaluators.length}</div>
+                    <div className="text-sm font-medium text-purple-800">Evaluators</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-sm font-medium text-gray-800 mb-1">Campaign</div>
+                    <div className="text-base font-semibold text-gray-900">
+                      {campaigns.find((c) => String(c.id) === String(selectedCampaign))?.name || '—'}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <button
+                    onClick={handleSaveAll}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow"
+                  >
+                    Save Campaign
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Step navigation */}
+          <div className="mt-6 flex items-center justify-between">
+            <button
+              onClick={() => setActiveStep((s) => Math.max(0, s - 1))}
+              disabled={activeStep === 0}
+              className={`px-4 py-2 rounded-lg border ${activeStep === 0 ? 'text-gray-400 border-gray-200 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50 border-gray-300'}`}
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setActiveStep((s) => Math.min(4, s + 1))}
+              disabled={activeStep === 4}
+              className={`px-4 py-2 rounded-lg ${activeStep === 4 ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+
       </main>
 
       {/* Employee Selection Modal */}
