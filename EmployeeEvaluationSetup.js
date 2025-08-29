@@ -1,83 +1,48 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  Users, 
-  Target, 
-  UserCheck, 
-  Plus, 
-  Settings,
-  CheckCircle,
-  AlertCircle,
+import {
+  Users,
+  Target,
+  UserCheck,
+  Plus,
   Info,
   Trash2,
   Search,
-  X,
-  Filter,
-  Pencil
+  X
 } from 'lucide-react';
 
 
-// --- API LAYER ----------------------------------------------------
-const API_BASE = import.meta?.env?.VITE_API_BASE || "/api";
-
-async function api(path, { method = "GET", params, body, headers } = {}) {
-  const url = new URL(`${API_BASE}${path}`, window.location.origin);
-  if (params) {
-    Object.entries(params).forEach(([k, v]) => {
-      if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, v);
-    });
-  }
-
-  const res = await fetch(url.toString(), {
-    method,
-    headers: { "Content-Type": "application/json", ...(headers || {}) },
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: "include",
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`${res.status} ${res.statusText}${text ? ` - ${text}` : ""}`);
-  }
-  return res.status === 204 ? null : res.json();
+// --- STUBBED API LAYER --------------------------------------------
+async function fetchCampaigns() {
+  return [
+    { id: '1', name: 'Annual Review', description: 'Yearly evaluation' },
+    { id: '2', name: 'Mid-Year Review', description: 'Mid-year evaluation' },
+  ];
 }
 
-const CampaignAPI = {
-  list: (params) => api("/campaigns", { params }),
-};
+async function fetchEmployees() {
+  return [
+    { id: 'EMP001', name: 'John Smith', department: 'IT', designation: 'Senior Developer' },
+    { id: 'EMP002', name: 'Sarah Johnson', department: 'HR', designation: 'HR Manager' },
+  ];
+}
 
-const EmployeeAPI = {
-  list: (params) => api("/employees", { params }),
-  addToCampaign: (campaignId, employeeIds) =>
-    api(`/campaigns/${campaignId}/employees`, {
-      method: "POST",
-      body: { employeeIds },
-    }),
-  removeFromCampaign: (campaignId, employeeIds) =>
-    api(`/campaigns/${campaignId}/employees`, {
-      method: "DELETE",
-      body: { employeeIds },
-    }),
-  updateInCampaign: (campaignId, payload) =>
-    api(`/campaigns/${campaignId}/employees`, {
-      method: "PUT",
-      body: payload,
-    }),
-};
+async function fetchEvaluators() {
+  return [
+    { id: 'EVAL001', username: 'admin', role: 'Administrator', department: 'Management' },
+    { id: 'EVAL002', username: 'hr_manager', role: 'HR Manager', department: 'HR' },
+  ];
+}
 
-const EvaluatorAPI = {
-  list: (params) => api("/evaluators", { params }),
-  addToCampaign: (campaignId, evaluatorIds) =>
-    api(`/campaigns/${campaignId}/evaluators`, {
-      method: "POST",
-      body: { evaluatorIds },
-    }),
-  removeFromCampaign: (campaignId, evaluatorIds) =>
-    api(`/campaigns/${campaignId}/evaluators`, {
-      method: "DELETE",
-      body: { evaluatorIds },
-    }),
-  create: (payload) => api(`/evaluators`, { method: "POST", body: payload }),
-};
+async function fetchFactors() {
+  return [
+    { id: 'F1', name: 'Teamwork', type: 'qualitative', description: 'Works well with team', marksLevel: 5 },
+    { id: 'F2', name: 'Productivity', type: 'quantitative', description: 'Output and efficiency', totalMarks: 100, passingMarks: 50 },
+    { id: 'F3', name: 'Leadership', type: 'recommended', description: 'Shows leadership qualities' },
+  ];
+}
+
+async function saveCampaign(data) { return { ok: true, id: 'NEW_ID', ...data }; }
+async function updateCampaign(data) { return { ok: true, ...data }; }
 // -----------------------------------------------------------------
 
 
@@ -572,6 +537,123 @@ const EvaluatorModal = ({
 };
 
 // Manual Evaluator Modal
+const FactorModal = ({
+  isOpen = false,
+  onClose = () => {},
+  factors = [],
+  selectedByType = {},
+  onConfirm = () => {}
+}) => {
+  const [type, setType] = useState('qualitative');
+  const [localSelected, setLocalSelected] = useState([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const pre = selectedByType[type] || [];
+      setLocalSelected(pre);
+    }
+  }, [isOpen, type, selectedByType]);
+
+  const filtered = useMemo(() => factors.filter((f) => f.type === type), [factors, type]);
+  const isSelected = (item) => localSelected.some((x) => x.id === item.id);
+  const toggle = (item) => {
+    setLocalSelected((prev) =>
+      prev.some((x) => x.id === item.id) ? prev.filter((x) => x.id !== item.id) : [...prev, item]
+    );
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">Add Factors</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="p-6 border-b border-gray-200 space-y-4">
+          <div className="max-w-sm">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg"
+            >
+              <option value="qualitative">Qualitative</option>
+              <option value="quantitative">Quantitative</option>
+              <option value="recommended">Recommended</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <div className="overflow-auto max-h-96">
+            {filtered.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-gray-500">No factors available for this type.</p>
+              </div>
+            ) : (
+              <table className="min-w-full">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="w-12 px-4 py-3 text-left"></th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                    {type === 'qualitative' && (
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Marks Level</th>
+                    )}
+                    {type === 'quantitative' && (
+                      <>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Marks</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Passing Marks</th>
+                      </>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filtered.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="w-12 px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelected(item)}
+                          onChange={() => toggle(item)}
+                          className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{item.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{item.description}</td>
+                      {type === 'qualitative' && (
+                        <td className="px-4 py-3 text-sm text-gray-900">{item.marksLevel ?? '-'}</td>
+                      )}
+                      {type === 'quantitative' && (
+                        <>
+                          <td className="px-4 py-3 text-sm text-gray-900">{item.totalMarks ?? '-'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{item.passingMarks ?? '-'}</td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border text-gray-700 hover:bg-gray-100">Cancel</button>
+          <button
+            onClick={() => onConfirm(type, localSelected)}
+            className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ManualEvaluatorModal = ({
   isOpen = false,
   onClose = () => {},
@@ -692,124 +774,47 @@ const ManualEvaluatorModal = ({
 };
 
 
-// Dummy data
-const CAMPAIGNS = [
-  { id: 1, name: 'Annual Performance Review 2024', status: 'active', description: 'Yearly comprehensive evaluation' },
-  { id: 2, name: 'Quarterly Assessment Q1 2024', status: 'draft', description: 'Q1 performance assessment' },
-  { id: 3, name: 'Mid-Year Review 2024', status: 'active', description: 'Mid-year performance check' },
-  { id: 4, name: 'Project Performance Evaluation', status: 'completed', description: 'Project-based evaluation' },
-  { id: 5, name: 'Leadership Assessment 2024', status: 'draft', description: 'Leadership skills evaluation' }
-];
-
-const EMPLOYEES = [
-  { id: 'EMP001', name: 'John Smith', department: 'IT', designation: 'Senior Developer', email: 'john.smith@company.com' },
-  { id: 'EMP002', name: 'Sarah Johnson', department: 'HR', designation: 'HR Manager', email: 'sarah.johnson@company.com' },
-  { id: 'EMP003', name: 'Mike Wilson', department: 'Finance', designation: 'Financial Analyst', email: 'mike.wilson@company.com' },
-  { id: 'EMP004', name: 'Emily Davis', department: 'Marketing', designation: 'Marketing Specialist', email: 'emily.davis@company.com' },
-  { id: 'EMP005', name: 'David Brown', department: 'IT', designation: 'System Administrator', email: 'david.brown@company.com' },
-  { id: 'EMP006', name: 'Lisa Anderson', department: 'Operations', designation: 'Operations Manager', email: 'lisa.anderson@company.com' },
-  { id: 'EMP007', name: 'Robert Taylor', department: 'Sales', designation: 'Sales Executive', email: 'robert.taylor@company.com' },
-  { id: 'EMP008', name: 'Jennifer White', department: 'IT', designation: 'Frontend Developer', email: 'jennifer.white@company.com' },
-  { id: 'EMP009', name: 'Alex Rodriguez', department: 'Marketing', designation: 'Digital Marketing Manager', email: 'alex.rodriguez@company.com' },
-  { id: 'EMP010', name: 'Maria Garcia', department: 'HR', designation: 'Recruitment Specialist', email: 'maria.garcia@company.com' }
-];
-
-const FACTOR_TYPES = [
-  { id: 'performance', name: 'Performance', description: 'Work output and goal achievement' },
-  { id: 'behavior', name: 'Behavior', description: 'Professional conduct and soft skills' },
-  { id: 'technical', name: 'Technical Skills', description: 'Job-specific technical competencies' },
-  { id: 'leadership', name: 'Leadership', description: 'Leadership and management abilities' },
-  { id: 'innovation', name: 'Innovation', description: 'Creative thinking and problem-solving' }
-];
-
-const FACTORS_DATA = {
-  performance: [
-    { id: 'perf1', name: 'Goal Achievement', description: 'Meeting set objectives and targets' },
-    { id: 'perf2', name: 'Quality of Work', description: 'Standard and accuracy of deliverables' },
-    { id: 'perf3', name: 'Productivity', description: 'Efficiency and output volume' },
-    { id: 'perf4', name: 'Initiative Taking', description: 'Proactive approach to tasks' },
-    { id: 'perf5', name: 'Time Management', description: 'Meeting deadlines and managing priorities' }
-  ],
-  behavior: [
-    { id: 'beh1', name: 'Team Collaboration', description: 'Working effectively with others' },
-    { id: 'beh2', name: 'Communication Skills', description: 'Clear and effective communication' },
-    { id: 'beh3', name: 'Punctuality', description: 'Timeliness and reliability' },
-    { id: 'beh4', name: 'Professional Ethics', description: 'Integrity and ethical conduct' },
-    { id: 'beh5', name: 'Adaptability', description: 'Flexibility to change and new situations' }
-  ],
-  technical: [
-    { id: 'tech1', name: 'Technical Expertise', description: 'Domain-specific knowledge and skills' },
-    { id: 'tech2', name: 'Problem Solving', description: 'Analytical and troubleshooting abilities' },
-    { id: 'tech3', name: 'Innovation', description: 'Creative solutions and new ideas' },
-    { id: 'tech4', name: 'Learning Agility', description: 'Ability to learn and adapt to new technologies' },
-    { id: 'tech5', name: 'Documentation', description: 'Quality of technical documentation' }
-  ],
-  leadership: [
-    { id: 'lead1', name: 'Team Management', description: 'Leading and managing team members' },
-    { id: 'lead2', name: 'Decision Making', description: 'Making effective and timely decisions' },
-    { id: 'lead3', name: 'Mentoring', description: 'Guiding and developing others' },
-    { id: 'lead4', name: 'Strategic Thinking', description: 'Long-term planning and vision' },
-    { id: 'lead5', name: 'Conflict Resolution', description: 'Managing and resolving disputes' }
-  ],
-  innovation: [
-    { id: 'innov1', name: 'Creative Thinking', description: 'Generating novel ideas and solutions' },
-    { id: 'innov2', name: 'Process Improvement', description: 'Enhancing existing workflows' },
-    { id: 'innov3', name: 'Research & Development', description: 'Exploring new technologies and methods' },
-    { id: 'innov4', name: 'Risk Taking', description: 'Taking calculated risks for innovation' }
-  ]
-};
-
-const EVALUATORS = [
-  { id: 'EVAL001', username: 'admin', role: 'Administrator', department: 'Management', email: 'admin@company.com' },
-  { id: 'EVAL002', username: 'hr_manager', role: 'HR Manager', department: 'HR', email: 'hr.manager@company.com' },
-  { id: 'EVAL003', username: 'team_lead_it', role: 'IT Team Lead', department: 'IT', email: 'it.lead@company.com' },
-  { id: 'EVAL004', username: 'supervisor_ops', role: 'Operations Supervisor', department: 'Operations', email: 'ops.supervisor@company.com' },
-  { id: 'EVAL005', username: 'director_sales', role: 'Sales Director', department: 'Sales', email: 'sales.director@company.com' },
-  { id: 'EVAL006', username: 'finance_head', role: 'Finance Head', department: 'Finance', email: 'finance.head@company.com' }
-];
+// removed hardcoded demo data in favor of stubbed API
 
 export default function EmployeeEvaluationSetup() {
   // Core state management
   const [selectedCampaign, setSelectedCampaign] = useState('');
   const [selectedEmployees, setSelectedEmployees] = useState([]);
-  const [selectedFactorType, setSelectedFactorType] = useState('');
-  const [factorSelections, setFactorSelections] = useState({});
+  const [factorSelections, setFactorSelections] = useState({}); // key: type -> array of factors
   const [selectedEvaluators, setSelectedEvaluators] = useState([]);
-// Master lists from backend
-const [campaigns, setCampaigns] = useState([]);
-const [employees, setEmployees] = useState([]);
-const [evaluators, setEvaluators] = useState([]);
-const [showManualEvaluatorModal, setShowManualEvaluatorModal] = useState(false);
-const [selectedEmployeeRows, setSelectedEmployeeRows] = useState([]);
-const [selectedEvaluatorRows, setSelectedEvaluatorRows] = useState([]);
-
-  // Employee Group Dropdown state (Officer/Staff)
-  // Values kept lowercase to align with requirement and potential backend expectations
-  const [employeeCategory, setEmployeeCategory] = useState("officer");
+  // Master lists from backend (stubbed)
+  const [campaigns, setCampaigns] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [evaluators, setEvaluators] = useState([]);
+  const [factors, setFactors] = useState([]);
+  const [showManualEvaluatorModal, setShowManualEvaluatorModal] = useState(false);
+  const [showFactorModal, setShowFactorModal] = useState(false);
 
 // Loading & error (basic)
-const [loading, setLoading] = useState({ campaigns: false, employees: false, evaluators: false });
+const [loading, setLoading] = useState({ campaigns: false, employees: false, evaluators: false, factors: false });
 const [loadError, setLoadError] = useState(null);
 useEffect(() => {
   const loadAll = async () => {
     try {
       setLoadError(null);
-      setLoading({ campaigns: true, employees: true, evaluators: true });
+      setLoading({ campaigns: true, employees: true, evaluators: true, factors: true });
 
-      const [c, e, v] = await Promise.all([
-        CampaignAPI.list(),
-        EmployeeAPI.list(),
-        EvaluatorAPI.list(),
+      const [c, e, v, f] = await Promise.all([
+        fetchCampaigns(),
+        fetchEmployees(),
+        fetchEvaluators(),
+        fetchFactors(),
       ]);
 
-      setCampaigns(Array.isArray(c) ? c : c?.data ?? []);
-      setEmployees(Array.isArray(e) ? e : e?.data ?? []);
-      setEvaluators(Array.isArray(v) ? v : v?.data ?? []);
+      setCampaigns(Array.isArray(c) ? c : []);
+      setEmployees(Array.isArray(e) ? e : []);
+      setEvaluators(Array.isArray(v) ? v : []);
+      setFactors(Array.isArray(f) ? f : []);
     } catch (err) {
       console.error(err);
       setLoadError(err.message);
     } finally {
-      setLoading({ campaigns: false, employees: false, evaluators: false });
+      setLoading({ campaigns: false, employees: false, evaluators: false, factors: false });
     }
   };
 
@@ -829,62 +834,45 @@ useEffect(() => {
   const [activeStep, setActiveStep] = useState(0);
 
   const handleSaveAll = useCallback(async () => {
-  try {
-    setIsSaving(true);
-    setSaveMessage(null);
-    setSaveError(null);
+    try {
+      setIsSaving(true);
+      setSaveMessage(null);
+      setSaveError(null);
 
-    // build payload for backend (no level field included)
-    const payload = {
-      campaignId: selectedCampaign || null,
+      const employeesPayload = selectedEmployees.map((e) => ({ id: e.id }));
+      const evaluatorsPayload = selectedEvaluators.map((e) => ({ id: e.id, level: Number(e.level || 0) }));
+      const factorsPayload = Object.values(factorSelections)
+        .flat()
+        .map((f) => ({ id: f.id }));
 
-      employees: selectedEmployees.map(emp => ({
-        id: emp.id
-      })),
+      const payload = {
+        id: selectedCampaign || undefined,
+        employees: employeesPayload,
+        evaluators: evaluatorsPayload,
+        factors: factorsPayload,
+      };
 
-      evaluators: selectedEvaluators.map(ev => ({
-        id: ev.id
-      })),
-
-      factors: factorSelections.map(fac => ({
-        id: fac.id
-      }))
-    };
-
-    await api('/employee-evaluations', { method: 'POST', body: payload });
-    setSaveMessage('All changes saved successfully.');
-  } catch (err) {
-    console.error(err);
-    setSaveError(err.message || 'Failed to save.');
-  } finally {
-    setIsSaving(false);
-  }
-}, [selectedCampaign, selectedEmployees, selectedEvaluators, factorSelections]);
+      if (selectedCampaign) await updateCampaign(payload);
+      else await saveCampaign(payload);
+      setSaveMessage('All changes saved successfully.');
+    } catch (err) {
+      console.error(err);
+      setSaveError(err.message || 'Failed to save.');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [selectedCampaign, selectedEmployees, selectedEvaluators, factorSelections]);
 
 
   // Filter employees by selected employeeCategory across UI
   // TODO: If the actual backend field is not `employee.category`, adjust normalization here
-  const normalizedCategory = (value) => String(value ?? '').trim().toLowerCase();
-  const matchesCategory = useCallback(
-    (emp) => normalizedCategory(emp.category) === normalizedCategory(employeeCategory),
-    [employeeCategory]
-  );
-
-  const filteredEmployeesMaster = useMemo(
-    () => employees.filter(matchesCategory),
-    [employees, matchesCategory]
-  );
-
-  const filteredSelectedEmployees = useMemo(
-    () => selectedEmployees.filter(matchesCategory),
-    [selectedEmployees, matchesCategory]
-  );
+  const filteredEmployeesMaster = employees;
+  const filteredSelectedEmployees = selectedEmployees;
 
   // Get current factors based on selected type
-  const getCurrentFactors = useCallback(() => {
-    if (!selectedFactorType) return [];
-    return FACTORS_DATA[selectedFactorType] || [];
-  }, [selectedFactorType]);
+  const getFactorsByType = useCallback((type) => {
+    return factors.filter((f) => f.type === type);
+  }, [factors]);
 
   // Get total selected factors across all types
   const getTotalSelectedFactors = useCallback(() => {
@@ -892,33 +880,22 @@ useEffect(() => {
   }, [factorSelections]);
 
   // Handle factor selection - Fixed to persist across type changes
-  const handleFactorToggle = useCallback((factor) => {
-    if (!selectedFactorType) return;
-
+  const handleFactorToggle = useCallback((type, factor) => {
     setFactorSelections(prev => {
-      const currentSelections = prev[selectedFactorType] || [];
+      const currentSelections = prev[type] || [];
       const isSelected = currentSelections.some(selected => selected.id === factor.id);
-      
       if (isSelected) {
-        return {
-          ...prev,
-          [selectedFactorType]: currentSelections.filter(selected => selected.id !== factor.id)
-        };
-      } else {
-        return {
-          ...prev,
-          [selectedFactorType]: [...currentSelections, factor]
-        };
+        return { ...prev, [type]: currentSelections.filter(selected => selected.id !== factor.id) };
       }
+      return { ...prev, [type]: [...currentSelections, factor] };
     });
-  }, [selectedFactorType]);
+  }, []);
 
   // Check if factor is selected - Fixed to work with persistent selections
-  const isFactorSelected = useCallback((factor) => {
-    if (!selectedFactorType) return false;
-    const currentSelections = factorSelections[selectedFactorType] || [];
+  const isFactorSelected = useCallback((type, factor) => {
+    const currentSelections = factorSelections[type] || [];
     return currentSelections.some(selected => selected.id === factor.id);
-  }, [selectedFactorType, factorSelections]);
+  }, [factorSelections]);
 
   // Handle employee confirmation from modal
 // Add employees to campaign
@@ -1097,28 +1074,9 @@ const handleRemoveEvaluator = useCallback(async (index) => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Employee Evaluation Setup</h1>
-              <p className="text-gray-600 mt-2">Configure evaluation campaigns with employees, factors, and evaluators</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleSaveAll}
-                className={`inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg shadow-md text-white ${isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'} focus:ring-2 focus:ring-indigo-500 transition-colors`}
-                disabled={isSaving}
-                title="Save entire setup"
-              >
-                {isSaving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Header removed per new layout requirements */}
 
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-8">
+      <main className="w-full p-0 m-0 space-y-8">
         {(saveMessage || saveError) && (
           <div className={`${saveError ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'} rounded-lg p-3`}>
             {saveError || saveMessage}
@@ -1153,20 +1111,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
                 </p>
               </div>
             )}
-            {/* Employee Group Dropdown */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Employee Group
-              </label>
-              <select
-                value={employeeCategory}
-                onChange={(e) => setEmployeeCategory(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="officer">Officer</option>
-                <option value="staff">Staff</option>
-              </select>
-            </div>
+            {/* Employee Group removed per new requirements */}
           </div>
         </div>
 
@@ -1216,25 +1161,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
             </span>
           </div>
           
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Factor Type
-            </label>
-            <div className="max-w-md">
-              <select
-                value={selectedFactorType}
-                onChange={(e) => setSelectedFactorType(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              >
-                <option value="">Select factor type...</option>
-                {FACTOR_TYPES.map(type => (
-                  <option key={type.id} value={type.id}>
-                    {type.name} - {type.description}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          {/* Factor Type dropdown removed from main area per new flow */}
 
           {/* Factor Type Summary */}
           {Object.keys(factorSelections).length > 0 && (
@@ -1242,19 +1169,19 @@ const handleRemoveEvaluator = useCallback(async (index) => {
               <h4 className="text-sm font-medium text-gray-700 mb-3">Selected Factors Summary:</h4>
               <div className="overflow-x-auto">
                 <div className="flex gap-3 pb-2">
-                  {FACTOR_TYPES.map(type => {
-                    const selectedCount = factorSelections[type.id]?.length || 0;
+                  {['qualitative','quantitative','recommended'].map(type => {
+                    const selectedCount = (factorSelections[type] || []).length;
                     if (selectedCount === 0) return null;
                     return (
                       <div key={type.id} className="flex-shrink-0 p-3 bg-green-50 rounded-lg border border-green-200">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-green-800">{type.name}</span>
+                          <span className="text-sm font-medium text-green-800">{type}</span>
                           <span className="text-sm text-green-600 bg-green-200 px-2 py-1 rounded-full">
                             {selectedCount}
                           </span>
                         </div>
                         <div className="text-xs text-green-600">
-                          {factorSelections[type.id]?.map(f => f.name).join(', ')}
+                          {factorSelections[type]?.map(f => f.name).join(', ')}
                         </div>
                       </div>
                     );
@@ -1263,24 +1190,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
               </div>
             </div>
           )}
-
-          {selectedFactorType && (
-            <div>
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  Available factors for <strong>{FACTOR_TYPES.find(t => t.id === selectedFactorType)?.name}</strong>
-                </p>
-                <p className="text-sm text-gray-500">
-                  {(factorSelections[selectedFactorType] || []).length} of {getCurrentFactors().length} selected
-                </p>
-              </div>
-              <Table
-                columns={factorColumns}
-                data={getCurrentFactors()}
-                emptyMessage="No factors available for the selected type."
-              />
-            </div>
-          )}
+          {/* Selection happens via Stepper Factor modal only */}
         </div>
 
         {/* Evaluators Section */}
@@ -1318,74 +1228,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
           />
         </div>
 
-        {/* Advanced Options */}
-        {showAdvancedOptions && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center space-x-3 mb-6">
-              <Settings className="w-6 h-6 text-indigo-600" />
-              <h2 className="text-xl font-semibold text-gray-900">Advanced Options</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Evaluation Period
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    type="date"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Start Date"
-                  />
-                  <input
-                    type="date"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    placeholder="End Date"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Evaluation Method
-                </label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                  <option value="standard">Standard Evaluation</option>
-                  <option value="360">360-Degree Feedback</option>
-                  <option value="self">Self Assessment</option>
-                  <option value="peer">Peer Review</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Rating Scale
-                </label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                  <option value="5">5-Point Scale (1-5)</option>
-                  <option value="10">10-Point Scale (1-10)</option>
-                  <option value="100">Percentage (0-100%)</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notifications
-                </label>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                    <span className="text-sm text-gray-600">Email notifications to evaluators</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                    <span className="text-sm text-gray-600">Reminder notifications</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Advanced Options removed */}
 
         {/* Summary Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -1490,12 +1333,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
                       {campaigns.find((c) => String(c.id) === String(selectedCampaign))?.description || ''}
                     </div>
                   </div>
-                  <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-                    <div className="text-sm text-gray-600">Employee Group</div>
-                    <div className="text-base font-semibold text-gray-900 mt-1">
-                      {employeeCategory === 'officer' ? 'Officer' : 'Staff'}
-                    </div>
-                  </div>
+                  {/* Employee Group display removed */}
                 </div>
               </div>
             )}
@@ -1531,15 +1369,23 @@ const handleRemoveEvaluator = useCallback(async (index) => {
 
             {activeStep === 3 && (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Factors</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Factors</h3>
+                  <button
+                    onClick={() => setShowFactorModal(true)}
+                    className="inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white focus:ring-2 focus:ring-green-500 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" /> Add Factor
+                  </button>
+                </div>
                 {/* Show selected factors grouped by type */}
-                {FACTOR_TYPES.map((type) => {
-                  const list = factorSelections[type.id] || [];
+                {['qualitative','quantitative','recommended'].map((type) => {
+                  const list = factorSelections[type] || [];
                   if (list.length === 0) return null;
                   return (
                     <div key={type.id} className="mb-4">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm font-medium text-gray-700">{type.name}</div>
+                        <div className="text-sm font-medium text-gray-700 capitalize">{type}</div>
                         <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{list.length}</span>
                       </div>
                       <div className="space-y-2">
@@ -1553,22 +1399,12 @@ const handleRemoveEvaluator = useCallback(async (index) => {
                             </div>
                             <div className="flex items-center gap-2">
                               <button
-                                className="p-2 rounded hover:bg-gray-100 text-gray-700"
-                                title="Edit factor"
-                                onClick={() => {
-                                  // TODO: wire up factor edit modal/logic for this factor
-                                  alert('TODO: Open factor edit for ' + f.name);
-                                }}
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button
                                 className="p-2 rounded hover:bg-red-50 text-red-600"
                                 title="Remove factor"
                                 onClick={() => {
                                   setFactorSelections((prev) => {
-                                    const current = prev[type.id] || [];
-                                    return { ...prev, [type.id]: current.filter((x) => x.id !== f.id) };
+                                    const current = prev[type] || [];
+                                    return { ...prev, [type]: current.filter((x) => x.id !== f.id) };
                                   });
                                 }}
                               >
@@ -1634,13 +1470,21 @@ const handleRemoveEvaluator = useCallback(async (index) => {
             >
               Previous
             </button>
-            <button
-              onClick={() => setActiveStep((s) => Math.min(4, s + 1))}
-              disabled={activeStep === 4}
-              className={`px-4 py-2 rounded-lg ${activeStep === 4 ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
-            >
-              Next
-            </button>
+            {activeStep < 4 ? (
+              <button
+                onClick={() => setActiveStep((s) => Math.min(4, s + 1))}
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+              >
+                Next
+              </button>
+            ) : (
+              <button
+                onClick={handleSaveAll}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+              >
+                Save Campaign
+              </button>
+            )}
           </div>
         </div>
 
@@ -1692,6 +1536,17 @@ const handleRemoveEvaluator = useCallback(async (index) => {
         alert(`Failed to assign new evaluator to campaign: ${err.message}`);
       });
     }
+  }}
+/>
+
+<FactorModal
+  isOpen={showFactorModal}
+  onClose={() => setShowFactorModal(false)}
+  factors={factors}
+  selectedByType={factorSelections}
+  onConfirm={(type, list) => {
+    setFactorSelections((prev) => ({ ...prev, [type]: list }));
+    setShowFactorModal(false);
   }}
 />
 
