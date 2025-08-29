@@ -7,7 +7,8 @@ import {
   Info,
   Trash2,
   Search,
-  X
+  X,
+  CheckCircle
 } from 'lucide-react';
 
 
@@ -907,7 +908,7 @@ const handleEmployeeConfirm = useCallback(async (pickedEmployees) => {
   const ids = pickedEmployees.map((e) => e.id);
 
   try {
-    await EmployeeAPI.addToCampaign(selectedCampaign, ids);
+    // stub: just merge into local state
     // Merge & de-dup local state
     setSelectedEmployees((prev) => {
       const map = new Map(prev.map((e) => [e.id, e]));
@@ -930,7 +931,7 @@ const handleEvaluatorConfirm = useCallback(async (pickedEvaluators) => {
   const ids = pickedEvaluators.map((e) => e.id);
 
   try {
-    await EvaluatorAPI.addToCampaign(selectedCampaign, ids);
+    // stub: just merge into local state
     setSelectedEvaluators((prev) => {
       // keep existing evaluator.level if present, otherwise default to empty string
       const map = new Map(prev.map((e) => [e.id, e]));
@@ -962,7 +963,7 @@ const handleRemoveEmployee = useCallback(async (index) => {
     return;
   }
   try {
-    await EmployeeAPI.removeFromCampaign(selectedCampaign, [emp.id]);
+    // stub: just remove from local state
     setSelectedEmployees((prev) => prev.filter((_, i) => i !== index));
   } catch (err) {
     console.error(err);
@@ -978,7 +979,7 @@ const handleRemoveEmployeeById = useCallback(async (employeeId) => {
     return;
   }
   try {
-    await EmployeeAPI.removeFromCampaign(selectedCampaign, [employeeId]);
+    // stub: just remove from local state
     setSelectedEmployees((prev) => prev.filter((e) => e.id !== employeeId));
   } catch (err) {
     console.error(err);
@@ -995,7 +996,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
     return;
   }
   try {
-    await EvaluatorAPI.removeFromCampaign(selectedCampaign, [ev.id]);
+    // stub: just remove from local state
     setSelectedEvaluators((prev) => prev.filter((_, i) => i !== index));
   } catch (err) {
     console.error(err);
@@ -1530,12 +1531,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
     });
 
     // If a campaign is selected, assign evaluator to campaign in backend
-    if (selectedCampaign) {
-      EvaluatorAPI.addToCampaign(selectedCampaign, [withLevel.id]).catch((err) => {
-        console.error(err);
-        alert(`Failed to assign new evaluator to campaign: ${err.message}`);
-      });
-    }
+    // stub: skip backend assign
   }}
 />
 
